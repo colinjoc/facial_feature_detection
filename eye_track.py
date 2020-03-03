@@ -31,23 +31,38 @@ def shape_to_np(shape, dtype="int"):
     # return the list of (x, y)-coordinates
     return coords   
 
+def center_face(original_image,image,shape):
+    '''
+    center face
+    '''
+    image = original_image-image   
+    num_rows, num_cols = image.shape[:2]
+    x_diff =  num_cols/2-(shape[0][0]+shape[16][0])/2
+    y_diff = (shape[0][1]+shape[16][1])/2
+   
+    translation_matrix = np.float32([ [1,0, x_diff], [0,1,num_rows/2-y_diff] ])
 
-def call_face(img,detector,predictor, method = 'circle'):
+    img_translation = cv2.warpAffine(image, translation_matrix, (num_cols, num_rows))
+    image = img_translation
+    return image
+
+def call_face(img,detector,predictor, centered=False, method = 'circle'):
     
     # initialize dlib's face detector (HOG-based) and then create
     # the facial landmark predictor
 
 
     # load the input image, resize it, and convert it to grayscale
-    image = img
-    image = imutils.resize(image, width=1000)
+    image = img.copy()
+    image = imutils.resize(image, width=500)
+    original_image = image.copy()
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
 
     # detect faces in the grayscale image
     rects = detector(gray, 1)
 
-    print(len(rects))    
+      
     # loop over the face detections
     for (i, rect) in enumerate(rects):
         # determine the facial landmarks for the face region, then
@@ -92,9 +107,8 @@ def call_face(img,detector,predictor, method = 'circle'):
         elif method == 'floating face':
             reorder = [np.concatenate([shape[:17], shape[26:22-1:-1],shape[22:17-1:-1]])]
             #reorder = [shape[26:21:-1]]
-            a=np.copy(image)
             cv2.fillPoly(image,reorder,(0,0,0))        
-            image = a-image        
+              
             
             
         else:
@@ -102,6 +116,10 @@ def call_face(img,detector,predictor, method = 'circle'):
             cap.release() 
             cv2.destroyAllWindows() 
 
+
+
+    if len(rects)==1 and centered:
+        image = center_face(original_image,image,shape)
     return image
 
 cap = cv2.VideoCapture(0) 
@@ -114,7 +132,7 @@ predictor = dlib.shape_predictor("shape_predictor_68_face_landmarks.dat")
 while 1: 
     ret, img = cap.read() 
     t0 = time.time()
-    out = call_face(img,detector,predictor,method='floating face')
+    out = call_face(img,detector,predictor,method='display all')
     #out = img
     t1 = time.time()
 
@@ -126,7 +144,3 @@ while 1:
 cap.release() 
 cv2.destroyAllWindows() 
 
-
-"""
-PLaying around with dlib's facial feature detection
-"""
